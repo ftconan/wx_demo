@@ -120,4 +120,3 @@ if __name__ == "__main__":
     accessToken = Basic().get_access_token()
     mediaType = "news"
     myMaterial.batch_get(accessToken, mediaType)
-
