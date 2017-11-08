@@ -1,21 +1,96 @@
 # coding=utf-8
 import urllib2
 import json
+import poster.encode
 
+from poster.streaminghttp import register_openers
 from basic import Basic
 
 
 class Material(object):
-    """
-    上传图文
-    """
-    def add_new(self, accessToken, news):
+    def __init__(self):
+        register_openers()
+
+    def add_news(self, accessToken, news):
+        """
+        上传图文
+        """
         postUrl = "https://api.weixin.qq.com/cgi-bin/material/add_news?access_token=%s" % accessToken
         urlResp = urllib2.urlopen(postUrl, news)
         print urlResp.read()
 
+    def upload(self, accessToken, filePath, mediaType):
+        """
+        上传图片
+        :param accessToken:
+        :param filePath:
+        :param mediaType:
+        :return:
+        """
+        openFile = open(filePath, "rb")
+        fileName = "hello"
+        param = {"media": openFile, "fileName": fileName}
+        postData, postHeaders = poster.encode.multipart_encode(param)
+
+        postUrl = "https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=%s&type=%s" % (accessToken, mediaType)
+        request = urllib2.Request(postUrl, postData, postHeaders)
+        urlResp = urllib2.urlopen(request)
+        print urlResp.read()
+
+    def get(self, accessToken, mediaId):
+        """
+        下载图片
+        :param accessToken:
+        :param mediaId:
+        :return:
+        """
+        postUrl = "https://api.weixin.qq.com/cgi-bin/material/get_material?access_token=%s" % accessToken
+        postData = "{ \"media_id\": \"%s\" }" % mediaId
+        urlResp = urllib2.urlopen(postUrl, postData)
+        headers = urlResp.info().__dict__['headers']
+        if ("Content-Type: application/json\r\n" in headers) or ("Content-Type: text/plain\r\n" in headers):
+            jsonDict = json.loads(urlResp.read())
+            print jsonDict
+        else:
+            # 素材的二进制
+            buffer = urlResp.read()
+            medidaFile = file("test_media.jpg", "wb")
+            medidaFile.write(buffer)
+            print "get successful"
+
+    def delete(self, accessToken, mediaId):
+        """
+        删除
+        :param self:
+        :param accessToken:
+        :param mediaId:
+        :return:
+        """
+        postUrl = "https://api.weixin.qq.com/cgi-bin/material/del_material?access_token=%s" % accessToken
+        postData = "{ \"media_id\": \"%s\" }" % mediaId
+        urlResp = urllib2.urlopen(postUrl, postData)
+        print urlResp.read()
+
+    def batch_get(self, accessToken, mediaType, offset=0, count=20):
+        """
+        获取素材列表
+        :param self:
+        :param accessToken:
+        :param mediaType:
+        :param offset:
+        :param count:
+        :return:
+        """
+        postUrl = ("https://api.weixin.qq.com/cgi-bin/material"
+                   "/batchget_material?access_token=%s" % accessToken)
+        postData = ("{ \"type\": \"%s\", \"offset\": %d, \"count\": %d }"
+                    % (mediaType, offset, count))
+        urlResp = urllib2.urlopen(postUrl, postData)
+        print urlResp.read()
+
 
 if __name__ == "__main__":
+    # add_new
     myMaterial = Material()
     accessToken = Basic().get_access_token()
     news = (
@@ -36,6 +111,13 @@ if __name__ == "__main__":
 
     # type(news) dict
     # news["articles"][0]["title"] = u"测试".encode("utf-8")
-    # print news["articles"][0]["title"]
+    print news["articles"][0]["title"]
     news = json.dumps(news, ensure_ascii=False)
-    myMaterial.add_new(accessToken, news)
+    myMaterial.add_news(accessToken, news)
+
+    # batch_get
+    myMaterial = Material()
+    accessToken = Basic().get_access_token()
+    mediaType = "news"
+    myMaterial.batch_get(accessToken, mediaType)
+
